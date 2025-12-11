@@ -15,3 +15,8 @@ def db_check():
     with engine.connect() as connection:
         result = connection.execute(text("SELECT 1")).scalar_one()
     return {"db_ok": result == 1}
+
+
+@app.get("/info")
+def info():
+    return {"msg": "API is alive"}
