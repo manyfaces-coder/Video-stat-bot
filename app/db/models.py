@@ -40,7 +40,7 @@ class Video(Base):
     created_at: Mapped[DateTime] = mapped_column(DateTime)
     updated_at: Mapped[DateTime] = mapped_column(DateTime)
 
-    snapshot: Mapped[list["VideoSnapshot"]] = relationship(
+    snapshots: Mapped[list["VideoSnapshot"]] = relationship(
         "VideoSnapshot",
         back_populates="video",
         cascade="all, delete-orphan",
