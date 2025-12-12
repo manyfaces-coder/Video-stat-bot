@@ -15,9 +15,13 @@ greenlet==3.3.0
 h11==0.16.0
 httptools==0.7.1
 idna==3.11
+ijson==3.4.0.post0
 magic-filter==1.0.12
 multidict==6.7.0
 propcache==0.4.1
+psycopg==3.3.2
+psycopg-binary==3.3.2
+psycopg2==2.9.11
 psycopg2-binary==2.9.11
 pydantic==2.12.5
 pydantic_core==2.41.5
