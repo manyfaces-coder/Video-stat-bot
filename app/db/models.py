@@ -1,5 +1,6 @@
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, DateTime, ForeignKey
+from datetime import datetime
 
 
 Base = declarative_base()
@@ -31,14 +32,14 @@ class Video(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     creator_id: Mapped[str] = mapped_column(String, index=True)
 
-    video_created_at: Mapped[DateTime] = mapped_column(DateTime)
+    video_created_at: Mapped[datetime] = mapped_column(DateTime)
     views_count: Mapped[int] = mapped_column(Integer)
     likes_count: Mapped[int] = mapped_column(Integer)
     comments_count: Mapped[int] = mapped_column(Integer)
     reports_count: Mapped[int] = mapped_column(Integer)
 
-    created_at: Mapped[DateTime] = mapped_column(DateTime)
-    updated_at: Mapped[DateTime] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    updated_at: Mapped[datetime] = mapped_column(DateTime)
 
     snapshots: Mapped[list["VideoSnapshot"]] = relationship(
         "VideoSnapshot",
@@ -81,7 +82,7 @@ class VideoSnapshot(Base):
     delta_comments_count: Mapped[int] = mapped_column(Integer)
     delta_reports_count: Mapped[int] = mapped_column(Integer)
 
-    created_at: Mapped[DateTime] = mapped_column(DateTime)
-    updated_at: Mapped[DateTime] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    updated_at: Mapped[datetime] = mapped_column(DateTime)
 
     video: Mapped[Video] = relationship("Video", back_populates="snapshots")
