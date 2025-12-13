@@ -1,20 +1,24 @@
-from fastapi import FastAPI
-from app.db.database import engine
+from fastapi import FastAPI, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from contextlib import asynccontextmanager
 from sqlalchemy import text
 
+from app.db.database import get_session, init_db
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
+    await init_db()
+    yield
 
-@app.get("/ping")
-def ping():
-    return {'status': 'ok'}
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/db-check")
-def db_check():
-    with engine.connect() as connection:
-        result = connection.execute(text("SELECT 1")).scalar_one()
-    return {"db_ok": result == 1}
+async def db_check(session: AsyncSession = Depends(get_session)):
+    result = await session.execute(text("SELECT 1"))
+    value = result.scalar_one()
+    return {"db_ok": value == 1}
 
 
 @app.get("/info")
