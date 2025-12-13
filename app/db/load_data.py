@@ -1,16 +1,17 @@
 import os
 import ijson
 
-from sqlalchemy import insert
+from sqlalchemy import insert, create_engine
 from sqlalchemy.orm import Session
 
-from app.db.database import engine, init_db
+from app.db.models import Base
+from app.db.database import DATABASE_URL
 from app.db.models import Video, VideoSnapshot
 
 
 # Настройки импорта
 SNAPSHOT_PART_SIZE = 10000   # сколько снапшотов копим в памяти перед вставкой
-
+ENGINE = None
 
 def import_file(path: str):
     """
@@ -30,10 +31,10 @@ def import_file(path: str):
         videos_iter = ijson.items(f, "videos.item")
 
         # Одна сессия на весь импорт — ок, но мы коммитим порциями
-        with Session(engine) as session:
+        with Session(ENGINE) as session:
             for video in videos_iter:
                 try:
-                # 1) Вставляем запись в videos
+                    # 1) Вставляем запись в videos
                     video_row = {
                         "id": video["id"],
                         "creator_id": video["creator_id"],
@@ -92,7 +93,10 @@ def import_file(path: str):
 
     return inserted_videos, inserted_snapshots
 
-
+def init_db():
+    global ENGINE
+    ENGINE = create_engine(DATABASE_URL)
+    Base.metadata.create_all(bind=ENGINE)
 
 if __name__ == "__main__":
     init_db()
