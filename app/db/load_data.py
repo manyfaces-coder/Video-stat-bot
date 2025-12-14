@@ -1,5 +1,6 @@
-import os
 import ijson
+
+from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -104,7 +105,13 @@ def import_file(path: str):
 
                     # Вставляем остаток снапшотов (если меньше заданного размера)
                     if part:
-                        session.execute(insert(VideoSnapshot), part)
+                        #остаток тоже должен быть идемпотентный, иначе повторный импорт падает
+                        stmt_snap = (
+                            insert(VideoSnapshot)
+                            .values(part)
+                            .on_conflict_do_nothing(index_elements=["id"])
+                        )
+                        session.execute(stmt_snap)
                         inserted_snapshots += len(part)
                         part.clear()
 
@@ -125,8 +132,7 @@ def init_db():
 
 if __name__ == "__main__":
     init_db()
-    # нормализуем путь до файла
-    path_json = os.path.normpath("data/videos.json")
+    path_json = Path("/app/data/videos.json")
 
     v, s = import_file(path_json)
     print(f"Импортировано videos: {v}, snapshots: {s}")

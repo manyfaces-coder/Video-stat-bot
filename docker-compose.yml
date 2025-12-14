@@ -26,6 +26,8 @@ services:
       db: # контейнер заработает только если контейнер с DB функционирует
         condition: service_healthy
     command: [ "python", "-m", "app.bot.main" ]
+    volumes:
+      - ./data:/app/data:ro
 
 volumes:
   pg_data:
