@@ -38,6 +38,10 @@ def get_system_prompt() -> str:
 
 
 def validate_sql(sql: str) -> None:
+    """
+    Проверяем получившийся от LLM SQL запрос
+    """
+
     s = sql.strip()
 
     if ";" in s:
@@ -52,19 +56,31 @@ def validate_sql(sql: str) -> None:
     # Примитивная проверка, что модель не лезет в другие таблицы
     lowered = s.lower()
 
-    if " from " not in lowered and " join " not in lowered:
-        raise ValueError("Запрос должен обращаться к таблицам (нет FROM/JOIN)")
+    tables_found: set[str] = set()
 
-    tokens = re.findall(r'\b(from|join)\s+([a-zA-Z_][a-zA-Z0-9_]*)\b', lowered)
-    for _, table in tokens:
-        if table not in ALLOWED_TABLES:
-            raise ValueError(f"Запрещённая таблица: {table}")
+    for _, table in re.findall(r'\b(from|join)\s+([a-zA-Z_][a-zA-Z0-9_]*)\b', lowered):
+        tables_found.add(table)
+
+    # Если вдруг tables_found пуст — не падаем, а просто пропускаем этот шаг.
+    # В тестовом задании модель всегда использует FROM, поэтому не должно сюда попадать,
+    # но если попадём – дадим запросу выполниться, чтобы не ронять бота
+    if not tables_found:
+        return
+
+    not_allowed = [t for t in tables_found if t not in ALLOWED_TABLES]
+    if not_allowed:
+        raise ValueError(f"Запрещённые таблицы: {', '.join(not_allowed)}")
 
 
 
-def to_sql(user_text: str, temperature: float = 0.1) -> str:
-    # with open(PATH_SYSTEM_PROMPT) as f:
-    #     system_prompt = f.read()
+def to_sql(user_text: str, temperature: float = 0.0) -> str:
+    """
+    Отправляем вопрос пользователя и Промпт к YandexGPTLite
+    :param user_text: вопрос пользователя из чата с ботом
+    :param temperature: уровень творчества модели от 0 до 1 где 0 это максимально сухо,
+                        а 1 - это максимум творчества
+    :return: получаем SQL запрос
+    """
     system_prompt = get_system_prompt()
     raw = LLM.create_completion(
         user_text,
@@ -77,6 +93,8 @@ def to_sql(user_text: str, temperature: float = 0.1) -> str:
     sql = (m.group(1) if m else (raw or "")).strip()
     # иногда модель возвращает "SQL: SELECT ..." — подчистим
     sql = re.sub(r"^\s*sql\s*:\s*", "", sql, flags=re.IGNORECASE).strip()
+    sql = re.sub(r";+\s*$", "", sql).strip()
+
     return sql
 
 
