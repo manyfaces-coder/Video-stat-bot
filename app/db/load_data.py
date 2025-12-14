@@ -1,17 +1,31 @@
 import os
 import ijson
 
-from sqlalchemy import insert, create_engine
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.db.models import Base
 from app.db.database import DATABASE_URL
 from app.db.models import Video, VideoSnapshot
 
+from sqlalchemy.dialects.postgresql import insert
+
 
 # Настройки импорта
 SNAPSHOT_PART_SIZE = 10000   # сколько снапшотов копим в памяти перед вставкой
-ENGINE = None
+ENGINE = None #
+
+
+def get_engine():
+    """
+    Делаем безопасную инициализацию engine.
+    Если не вызвать init_db() — скрипт всё равно поднимет ENGINE сам.
+    """
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = create_engine(DATABASE_URL)
+    return ENGINE
+
 
 def import_file(path: str):
     """
@@ -31,7 +45,7 @@ def import_file(path: str):
         videos_iter = ijson.items(f, "videos.item")
 
         # Одна сессия на весь импорт — ок, но мы коммитим порциями
-        with Session(ENGINE) as session:
+        with Session(get_engine()) as session:
             for video in videos_iter:
                 try:
                     # 1) Вставляем запись в videos
@@ -49,7 +63,13 @@ def import_file(path: str):
 
                     # insert() возвращает SQLAlchemy Core выражение INSERT INTO
                     # оно работает на уровне SQL/таблицы, Video() не создается как python объект => работает быстрее
-                    session.execute(insert(Video).values(**video_row))
+                    # делаем импорт идемпотентным (повторный запуск не падает по PK)
+                    stmt_video = (
+                        insert(Video)
+                        .values(**video_row)
+                        .on_conflict_do_nothing(index_elements=["id"])
+                    )
+                    session.execute(stmt_video)
                     inserted_videos += 1
 
                     # 2) Вставляем snapshots частями
@@ -72,7 +92,13 @@ def import_file(path: str):
 
                         # Если набрал SNAPSHOT_PART_SIZE, то отправляем данные в БД и очищаем память
                         if len(part) >= SNAPSHOT_PART_SIZE:
-                            session.execute(insert(VideoSnapshot), part)
+                            # делаем вставку идемпотентной для снапшотов
+                            stmt_snap = (
+                                insert(VideoSnapshot)
+                                .values(part)
+                                .on_conflict_do_nothing(index_elements=["id"])
+                            )
+                            session.execute(stmt_snap)
                             inserted_snapshots += len(part)
                             part.clear()
 
@@ -88,7 +114,6 @@ def import_file(path: str):
                     # откатить текущую транзакцию
                     session.rollback()
                     print(f"Ошибка на видео id={video.get('id')}: {exp}")
-
                     raise
 
     return inserted_videos, inserted_snapshots
