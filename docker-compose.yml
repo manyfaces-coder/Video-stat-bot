@@ -9,9 +9,24 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
     volumes:
       - pg_data:/var/lib/postgresql/data
+    healthcheck: # проверка заработала ли БД
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      db: # контейнер заработает только если контейнер с DB функционирует
+        condition: service_healthy
+    command: [ "python", "-m", "app.bot.main" ]
 
 volumes:
   pg_data:
+
