@@ -27,12 +27,11 @@ async def handle_question(message: types.Message):
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
 
     text = (message.text or "").strip() # безопасно работаем с None и убираем пробелы
-    print(f"Пришло сообщение: {text} ")
+
     # если вдруг пользователь пишет начиная с "/", то возьмем текст
     # иначе считаем, что весь text — вопрос.
     if text.startswith("/"):
         _, _, tail = text.partition(" ")
-        print(f" _, _, tail = {tail}")
         user_text = tail.strip()
     else:
         user_text = text
@@ -40,10 +39,10 @@ async def handle_question(message: types.Message):
     if not user_text:
         return await message.answer("Задайте вопрос текстом")
 
-    print(f"Получилось сообщение: {user_text} ")
     try:
         # to_sql синхронный => уводим в отдельный поток, чтобы не блокировать event loop
         sql = await asyncio.to_thread(to_sql, user_text)
+        # print("***LLM SQL:", sql)
 
         validate_sql(sql)
 
